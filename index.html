@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MC2Sync — PS2 Memory Card Manager</title>
+    <meta name="description" content="PS2 Memory card web manager tool. Sync your multiple virtual memory card files into one" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="logo-container">
+          <h1 class="logo-text">MC2Sync</h1>
+          <span class="subtitle">PS2 Memory Card Manager</span>
+        </div>
+      </header>
+      
+      <main class="app-main">
+        <!-- Card Loader zone -->
+        <div id="card-loader-container">
+          <div id="card-loader" class="card-loader">
+            <div class="loader-content">
+              <div class="loader-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <h2 class="card-loader__title">Drop .ps2 files here</h2>
+              <p class="card-loader__subtitle">or click to browse</p>
+              <input type="file" id="file-input" multiple accept=".ps2,.bin,.mcd" class="hidden-input" />
+              <button class="btn btn-primary card-loader__btn" id="btn-browse">Select Files</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Loaded cards sidebar -->
+        <aside id="cards-sidebar" class="cards-sidebar hidden">
+          <h3 class="sidebar-title">Loaded Cards</h3>
+          <div id="cards-list" class="cards-list"></div>
+          <div class="sidebar-footer" style="display: flex; gap: 8px; flex-direction: column;">
+            <button id="btn-load-more" class="btn btn-secondary w-full">Load Another Card</button>
+            <button id="btn-sync-all" class="btn btn-secondary w-full" disabled>Sync Cards</button>
+          </div>
+        </aside>
+        
+        <!-- Main content area -->
+        <section id="main-content" class="main-content hidden">
+          <div id="card-viewer">
+            <!-- Populated by JS -->
+          </div>
+        </section>
+        
+        <!-- Inspector panel (right side) -->
+        <aside id="inspector-panel" class="inspector-panel hidden">
+          <!-- Populated by JS -->
+        </aside>
+      </main>
+      
+      <!-- Sync modal overlay -->
+      <div id="sync-modal" class="sync-modal hidden">
+        <div class="modal-content glass-panel">
+          <div class="modal-header">
+            <h2>Sync & Merge Cards</h2>
+            <button class="btn-icon btn-close-modal">×</button>
+          </div>
+          <div class="modal-body" id="sync-modal-body">
+            <!-- Sync options and preview here -->
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-close-modal">Cancel</button>
+            <button class="btn btn-primary" id="btn-execute-merge">Merge & Download</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Toast container -->
+      <div id="toast-container" class="toast-container"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
