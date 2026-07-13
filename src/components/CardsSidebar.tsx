@@ -8,6 +8,7 @@ import {
   canSync,
   openSyncModal,
   showToast,
+  openConfirmModal,
 } from '../state/app-state';
 import { formatSize } from '../utils/format';
 import { useMemoryCard } from '../hooks/use-memory-card';
@@ -64,9 +65,17 @@ export const CardsSidebar: FunctionComponent = () => {
                 <button
                   class="btn-icon"
                   style="width:20px;height:20px;font-size:0.75rem;"
-                  title="Remove card"
-                  onClick={(e) => { e.stopPropagation(); removeCard(index); }}
-                  aria-label={`Remove ${card.fileName}`}
+                  title="Close card"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openConfirmModal(
+                      'Close Card',
+                      `Are you sure you want to close "${card.fileName}"? Any unsaved changes will be lost.`,
+                      'Close Card',
+                      () => removeCard(index)
+                    );
+                  }}
+                  aria-label="Close card"
                 >
                   ×
                 </button>

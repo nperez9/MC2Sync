@@ -1,5 +1,5 @@
 import { type FunctionComponent } from 'preact';
-import { selectedSave, selectSave } from '../state/app-state';
+import { selectedSave, selectSave, activeCardIndex, deleteSave, openCopyModal, openConfirmModal } from '../state/app-state';
 import { formatSize, formatTimestamp, formatTimestampFull } from '../utils/format';
 import { IconRenderer } from './IconRenderer';
 
@@ -75,6 +75,28 @@ export const CardInspector: FunctionComponent = () => {
             </div>
           </div>
         )}
+
+        <div style={{ marginTop: 'auto', paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button 
+            class="btn btn-secondary w-full"
+            onClick={() => openCopyModal(activeCardIndex.value!, save)}
+          >
+            Copy to another card
+          </button>
+          <button 
+            class="btn btn-danger w-full" 
+            onClick={() => {
+              openConfirmModal(
+                'Delete Save',
+                `Are you sure you want to delete "${save.gameTitle}" from this card?`,
+                'Delete',
+                () => deleteSave(activeCardIndex.value!, save.directoryName)
+              );
+            }}
+          >
+            Delete Save
+          </button>
+        </div>
       </div>
     </aside>
   );

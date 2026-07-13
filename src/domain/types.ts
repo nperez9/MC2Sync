@@ -100,7 +100,9 @@ export interface MemoryCard {
   readonly usedClusters: number;
   readonly freeClusters: number;
   readonly rawBuffer: ArrayBuffer;
+  readonly isModified?: boolean;
 }
+
 
 // ─── Game Database ───────────────────────────────────────────────────────────
 
