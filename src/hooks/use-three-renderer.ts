@@ -69,6 +69,14 @@ export const useThreeRenderer = ({ icon }: ThreeRendererOptions) => {
     geometry.setAttribute('uv',       new THREE.BufferAttribute(uvs,       2));
     geometry.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
 
+    // ── Center geometry so the model isn't clipped ───────────────────────────
+    geometry.computeBoundingBox();
+    const bbox = geometry.boundingBox!;
+    const offsetX = -(bbox.min.x + bbox.max.x) / 2;
+    const offsetY = -(bbox.min.y + bbox.max.y) / 2;
+    const offsetZ = -(bbox.min.z + bbox.max.z) / 2;
+    geometry.center();
+
     // ── Morph targets (animation shapes) ─────────────────────────────────────
     let mixer: THREE.AnimationMixer | null = null;
 
@@ -80,9 +88,9 @@ export const useThreeRenderer = ({ icon }: ThreeRendererOptions) => {
         for (let i = 0; i < vertexCount; i++) {
           const v = shape.vertices[i];
           if (v === undefined) continue;
-          morphPos[i * 3]     = v.x;
-          morphPos[i * 3 + 1] = v.y;
-          morphPos[i * 3 + 2] = v.z;
+          morphPos[i * 3]     = v.x + offsetX;
+          morphPos[i * 3 + 1] = v.y + offsetY;
+          morphPos[i * 3 + 2] = v.z + offsetZ;
         }
         geometry.morphAttributes['position'] ??= [];
         geometry.morphAttributes['position'].push(new THREE.BufferAttribute(morphPos, 3));

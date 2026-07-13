@@ -27,13 +27,14 @@ import { CLUSTER_SIZE } from './ps2mc-parser';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Stable fingerprint for duplicate detection: sorted file {name, size} pairs */
+/** Stable fingerprint for duplicate detection: sorted file {name, size} pairs and modified date */
 const saveFingerprint = (save: SaveEntry): string =>
-  JSON.stringify(
-    [...save.files]
+  JSON.stringify({
+    files: [...save.files]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(f => ({ name: f.name, size: f.size })),
-  );
+    modified: timestampToDate(save.modified).getTime()
+  });
 
 // ─── Compare ──────────────────────────────────────────────────────────────────
 
