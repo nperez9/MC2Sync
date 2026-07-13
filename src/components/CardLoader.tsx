@@ -2,7 +2,10 @@ import { type FunctionComponent } from 'preact';
 import { useRef } from 'preact/hooks';
 import { useFileDrop } from '../hooks/use-file-drop';
 import { useMemoryCard } from '../hooks/use-memory-card';
+import { loadDemoCards } from '../hooks/use-demo-loader';
 import { isLoading, loadingMessage, showToast } from '../state/app-state';
+
+const isDemo = window.location.pathname.replace(/\/$/, '') === '/demo';
 
 export const CardLoader: FunctionComponent = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,10 +74,38 @@ export const CardLoader: FunctionComponent = () => {
               >
                 Select Files
               </button>
+              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>or</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border-glass)' }} />
+              </div>
+              <button
+                class="btn btn-secondary card-loader__btn"
+                id="btn-demo"
+                onClick={() => void loadDemoCards()}
+                type="button"
+                style={{ marginTop: '4px' }}
+              >
+                🎮 Try Demo
+              </button>
             </>
           )}
         </div>
       </div>
+      {isDemo && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px 20px',
+          borderRadius: 'var(--radius-sm)',
+          background: 'rgba(99, 102, 241, 0.15)',
+          border: '1px solid rgba(99, 102, 241, 0.4)',
+          color: 'var(--text-secondary)',
+          fontSize: '0.875rem',
+          textAlign: 'center'
+        }}>
+          🚀 You're in <strong>Demo Mode</strong> — two sample PS2 memory cards are being loaded automatically.
+        </div>
+      )}
     </div>
   );
 };

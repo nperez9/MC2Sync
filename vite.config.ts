@@ -9,6 +9,8 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  // Serve index.html for any route that isn't a static asset — enables /demo
+  appType: 'spa',
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

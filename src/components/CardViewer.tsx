@@ -1,3 +1,4 @@
+import { type FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { activeCard, activeCardIndex, selectedSave, selectSave, deleteSave, openCopyModal, openConfirmModal } from '../state/app-state';
 import { formatSize, formatTimestamp } from '../utils/format';
