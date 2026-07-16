@@ -21,6 +21,7 @@ import {
 import {
   EXPECTED_FILE_SIZE,
   PAGE_SIZE,
+  SPARE_SIZE,
   RAW_PAGE_SIZE,
   PAGES_PER_CLUSTER,
   CLUSTER_SIZE,
@@ -39,12 +40,75 @@ import {
   readPageData,
 } from './ps2mc-parser';
 
+// ─── ECC (Hamming code) — ported from pymemcard/ps2mc_ecc.py ─────────────────
+// PCSX2 validates these codes in the 16-byte spare area of every page.
+// Each 128-byte chunk produces 3 bytes of ECC. A 512-byte page has 4 chunks = 12 bytes.
+// The remaining 4 bytes of the 16-byte spare are zero-padded.
+
+const _parityb = (a: number): number => {
+  a = (a ^ (a >> 1));
+  a = (a ^ (a >> 2));
+  a = (a ^ (a >> 4));
+  return a & 1;
+};
+
+const _cpmasks = [0x55, 0x33, 0x0F, 0x00, 0xAA, 0xCC, 0xF0] as const;
+
+// Pre-compute lookup tables
+const _parityTable = new Uint8Array(256);
+const _columnParityMasks = new Uint8Array(256);
+for (let b = 0; b < 256; b++) {
+  _parityTable[b] = _parityb(b);
+  let mask = 0;
+  for (let i = 0; i < _cpmasks.length; i++) {
+    mask |= _parityTable[b & _cpmasks[i]!]! << i;
+  }
+  _columnParityMasks[b] = mask;
+}
+
+/** Calculate 3-byte Hamming ECC for a 128-byte chunk. */
+const eccCalculate128 = (data: Uint8Array, offset: number): [number, number, number] => {
+  let cp = 0x77;
+  let lp0 = 0x7F;
+  let lp1 = 0x7F;
+  for (let i = 0; i < 128; i++) {
+    const b = data[offset + i]!;
+    cp ^= _columnParityMasks[b]!;
+    if (_parityTable[b]) {
+      lp0 ^= ~i & 0x7F;
+      lp1 ^= i;
+    }
+  }
+  return [cp, lp0 & 0x7F, lp1];
+};
+
+/** Calculate 12 bytes of ECC for a 512-byte page (4 × 128-byte chunks). */
+const eccCalculatePage = (page: Uint8Array): Uint8Array => {
+  const ecc = new Uint8Array(12);
+  for (let i = 0; i < 4; i++) {
+    const [a, b, c] = eccCalculate128(page, i * 128);
+    ecc[i * 3]     = a;
+    ecc[i * 3 + 1] = b;
+    ecc[i * 3 + 2] = c;
+  }
+  return ecc;
+};
+
 // ─── Raw page addressing ──────────────────────────────────────────────────────
 
+/**
+ * Write 512 bytes of page data + 16 bytes of spare (12 ECC + 4 zero padding).
+ */
 const writePageData = (buffer: ArrayBuffer, pageIndex: number, data: Uint8Array): void => {
   const offset = pageIndex * RAW_PAGE_SIZE;
+  // Write the 512 bytes of page data
   const dst = new Uint8Array(buffer, offset, PAGE_SIZE);
   dst.set(data.subarray(0, PAGE_SIZE));
+  // Calculate and write ECC into the 16-byte spare area
+  const ecc = eccCalculatePage(data);
+  const spare = new Uint8Array(buffer, offset + PAGE_SIZE, SPARE_SIZE);
+  spare.set(ecc);
+  // Remaining 4 bytes (12..15) stay zero
 };
 
 const writeClusterDataRaw = (buffer: ArrayBuffer, clusterIndex: number, data: Uint8Array): void => {
@@ -68,6 +132,15 @@ const writeFATCluster = (buffer: ArrayBuffer, fatClusterAbs: number, fatData: Ui
   const bytes = new Uint8Array(fatData.buffer, fatData.byteOffset, fatData.byteLength);
   writeClusterDataRaw(buffer, fatClusterAbs, bytes);
 };
+
+// ─── FAT constants ───────────────────────────────────────────────────────────
+// Real PS2 cards OR 0x80000000 into every allocated FAT entry.
+// Free clusters use 0x7FFFFFFF. Allocated chain end uses 0xFFFFFFFF.
+const FAT_ALLOCATED_BIT = 0x80000000;
+const FAT_FREE_CLUSTER  = 0x7FFFFFFF;
+
+/** Build a FAT chain link: set allocated bit + next cluster index. */
+const fatLink = (nextCluster: number): number => FAT_ALLOCATED_BIT | nextCluster;
 
 // ─── Standalone blank card constants ──────────────────────────────────────────
 // These match the geometry of a real PS2-formatted 8MB card.
@@ -178,6 +251,16 @@ const readRefSuperblock = (buffer: ArrayBuffer) => {
 const createBlankCardFromRef = (referenceBuffer: ArrayBuffer): { dest: ArrayBuffer; allocOffset: number; allocEnd: number; rootCluster: number; ifcCluster: number; fat0Cluster: number } => {
   const dest = new ArrayBuffer(EXPECTED_FILE_SIZE);
 
+  // ── Stamp ECC on ALL pages first (blank page = all zeros) ─────────────────
+  // A zeroed page has a fixed ECC; compute once, apply to all 16384 pages.
+  const blankPage = new Uint8Array(PAGE_SIZE); // all zeros
+  const blankEcc = eccCalculatePage(blankPage);
+  for (let p = 0; p < TOTAL_PAGES; p++) {
+    const spareOffset = p * RAW_PAGE_SIZE + PAGE_SIZE;
+    const spare = new Uint8Array(dest, spareOffset, SPARE_SIZE);
+    spare.set(blankEcc);
+  }
+
   // ── Copy superblock page 0 verbatim from reference ────────────────────────
   const refPage0 = readPageData(referenceBuffer, 0);
   writePageData(dest, 0, new Uint8Array(refPage0));
@@ -200,8 +283,8 @@ const createBlankCardFromRef = (referenceBuffer: ArrayBuffer): { dest: ArrayBuff
   ifcView.setUint32(0, fat0Cluster, true);
   writeClusterDataRaw(dest, ref.ifcCluster, ifcData);
 
-  // ── FAT cluster 0 — all END ──────────────────────────────────────────────
-  const fatData = new Uint32Array(CLUSTER_SIZE / 4).fill(FAT_CHAIN_END);
+  // ── FAT cluster 0 — free entries = 0x7FFFFFFF, root = chain end ──────────
+  const fatData = new Uint32Array(CLUSTER_SIZE / 4).fill(FAT_FREE_CLUSTER);
   fatData[ref.rootCluster] = FAT_CHAIN_END;
   writeFATCluster(dest, fat0Cluster, fatData);
 
@@ -281,8 +364,9 @@ export const buildMergedCard = (
     createBlankCardFromRef(refCard.rawBuffer);
 
   const allocatableClusters = allocEnd - allocOffset;
-  const fat = new Uint32Array(allocatableClusters).fill(FAT_CHAIN_END);
-  fat[rootCluster] = FAT_CHAIN_END;
+  // Initialize all entries as free (0x7FFFFFFF); allocated entries get 0x80000000 bit
+  const fat = new Uint32Array(allocatableClusters).fill(FAT_FREE_CLUSTER);
+  fat[rootCluster] = FAT_CHAIN_END; // root = allocated, chain end
 
   let nextFree = 1;
   const alloc = (): number | null => {
@@ -302,7 +386,7 @@ export const buildMergedCard = (
       const nc = alloc();
       if (nc === null) return false;
       const prev = rootDirClusters[rootDirClusters.length - 1]!;
-      fat[prev] = nc;
+      fat[prev] = fatLink(nc);
       fat[nc]   = FAT_CHAIN_END;
       rootDirClusters.push(nc);
       writeAllocatableCluster(dest, nc, allocOffset, new Uint8Array(CLUSTER_SIZE));
@@ -348,7 +432,7 @@ export const buildMergedCard = (
       destDirChain.push(nc);
     }
     for (let i = 0; i < destDirChain.length; i++) {
-      fat[destDirChain[i]!] = i + 1 < destDirChain.length ? destDirChain[i + 1]! : FAT_CHAIN_END;
+      fat[destDirChain[i]!] = i + 1 < destDirChain.length ? fatLink(destDirChain[i + 1]!) : FAT_CHAIN_END;
     }
 
     // 3. Copy directory cluster data verbatim
@@ -371,7 +455,7 @@ export const buildMergedCard = (
         destFileChain.push(nc);
       }
       for (let i = 0; i < destFileChain.length; i++) {
-        fat[destFileChain[i]!] = i + 1 < destFileChain.length ? destFileChain[i + 1]! : FAT_CHAIN_END;
+        fat[destFileChain[i]!] = i + 1 < destFileChain.length ? fatLink(destFileChain[i + 1]!) : FAT_CHAIN_END;
       }
       for (let i = 0; i < srcFileChain.length; i++) {
         const srcCluster  = srcFileChain[i]!;
