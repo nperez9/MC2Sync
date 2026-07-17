@@ -127,6 +127,23 @@ export const SyncModal: FunctionComponent = () => {
               </div>
             ))}
           </div>
+
+          {/* Conflict warning */}
+          {comparison.conflictCount > 0 && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              background: 'rgba(255, 193, 7, 0.08)',
+              border: '1px solid rgba(255, 193, 7, 0.25)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.82rem',
+              lineHeight: '1.5',
+              color: 'var(--text-secondary)',
+            }}>
+              <span style={{ marginRight: '6px' }}>⚠️</span>
+              <strong style={{ color: 'var(--text-primary)' }}>Heads up:</strong> If there are conflicts between saves, the most recently updated version will be kept. A savefile picker for manual conflict resolution is coming soon.
+            </div>
+          )}
         </div>
 
         <div class="modal-footer">
