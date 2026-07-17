@@ -77,12 +77,12 @@ export const CardInspector: FunctionComponent = () => {
         )}
 
         <div style={{ marginTop: 'auto', paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button 
+          {/* <button 
             class="btn btn-secondary w-full"
             onClick={() => openCopyModal(activeCardIndex.value!, save)}
           >
             Copy to another card
-          </button>
+          </button> */}
           <button 
             class="btn btn-danger w-full" 
             onClick={() => {

@@ -1,6 +1,6 @@
 import { type FunctionComponent } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { activeCard, activeCardIndex, selectedSave, selectSave, deleteSave, openCopyModal, openConfirmModal } from '../state/app-state';
+import { activeCard, activeCardIndex, selectedSave, selectSave, deleteSave, openCopyModal, openConfirmModal, exportCard } from '../state/app-state';
 import { formatSize, formatTimestamp } from '../utils/format';
 import type { SaveEntry } from '../domain/types';
 
@@ -100,7 +100,7 @@ const SaveRow: FunctionComponent<{
               gap: '4px'
             }}
           >
-            <button 
+            {/* <button 
               style={{
                 width: '100%',
                 textAlign: 'left',
@@ -122,7 +122,7 @@ const SaveRow: FunctionComponent<{
               }}
             >
               Copy to another card
-            </button>
+            </button> */}
             <button 
               style={{
                 width: '100%',
@@ -167,7 +167,14 @@ export const CardViewer: FunctionComponent = () => {
             </div>
           </div>
           <div class="viewer-toolbar">
-            {/* Export button removed temporarily per user request */}
+            {card.isModified && (
+              <button 
+                class="btn btn-primary" 
+                onClick={() => exportCard(activeCardIndex.value!)}
+              >
+                Export Modified Card
+              </button>
+            )}
           </div>
         </div>
 
